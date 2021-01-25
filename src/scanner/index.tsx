@@ -1,5 +1,16 @@
 import * as React from "react";
-import { Box, Button, TextField, makeStyles, Theme } from "@material-ui/core";
+import {
+  Box,
+  Button,
+  TextField,
+  makeStyles,
+  Theme,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Typography,
+  DialogActions,
+} from "@material-ui/core";
 
 import { NotFoundException, BrowserPDF417Reader } from "@zxing/library/esm";
 import "../index.css";
@@ -9,14 +20,18 @@ const ScanApp = () => {
   const [value, setValue] = React.useState<any>();
   let selectedDeviceId: any;
   const codeReader: any = new BrowserPDF417Reader();
-
-  const handleScan = () => {
-    const ele = document.getElementById("dbrScanner-scanlight");
+  const [show, setShow] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  const ele = document.getElementById("scanlight");
+  let res=false
+  const handleScan = async () => {
+    setShow(true);
+    
     if (ele !== null) {
       ele.style.display = "block";
     }
     try {
-      codeReader.decodeFromVideoDevice(
+      const controls=await codeReader.decodeFromVideoDevice(
         selectedDeviceId,
         "video",
         (result: any, err: any) => {
@@ -25,19 +40,40 @@ const ScanApp = () => {
 
             const data = parse(result.text);
             setValue(data);
+            // console.log(data, codeReader);
+
             // console.log(JSON.stringify(data, null, 2));
-            // codeReader.reset();
+            codeReader.reset();
             if (ele !== null) {
               ele.style.display = "none";
             }
+            // setOpen(false);
             // setValue(" ");
+            res=true;
           }
-          if (err && !(err instanceof NotFoundException)) {
-            // console.log("error");
-            setValue("error");
+          if (err) {
+            console.log("error");
+            setTimeout(() => {
+              // alert("couldn't detect, try again");\
+              // console.log("vaalue", result, value);
+              if (!res) {
+                setOpen(true);
+                codeReader.reset();
+                if (ele !== null) {
+                  ele.style.display = "none";
+                }
+                // setValue("error");
+              }
+            }, 10000);
           }
+          // if (err instanceof NotFoundException) {
+          //   console.log("excep");
+
+          // }
         }
       );
+      // console.log("con",controls)
+      // setTimeout(() => controls.stop(), 2000);
     } catch (err) {
       // console.log("err");
     }
@@ -45,10 +81,15 @@ const ScanApp = () => {
 
   const handleReset = () => {
     codeReader.reset();
-    setValue(" ");
+    // setShow(false);
+    if (ele !== null) {
+      ele.style.display = "none";
+    }
+    setValue("");
+    setOpen(false);
   };
 
-  
+
   return (
     <Box display="flex" flexDirection="column">
       <Box display="flex" justifyContent="space-around">
@@ -60,6 +101,7 @@ const ScanApp = () => {
         >
           scan
         </Button>
+
         <Button
           style={{ width: "100px" }}
           color="primary"
@@ -69,60 +111,75 @@ const ScanApp = () => {
           Reset
         </Button>
       </Box>
+      <Dialog open={open}>
+        <DialogContent dividers>
+          <Typography gutterBottom>
+            Couldn't detect!! Please place the card properly.
+          </Typography>
+        </DialogContent>{" "}
+        <DialogActions>
+          <Button autoFocus onClick={handleReset} color="primary">
+            Try Again
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {show && (
+        <>
+          <div>Please align your barcode into this rectangular box</div>
 
-      <div>Please align your barcode into this rectangular box</div>
-
-      <div className="barcode-scanner">
-        <video id="video" className="video"></video>
-        <div className="scanarea">
-          <div
-            id="scanlight"
-            className="scanlight"
-            style={{ display: "none" }}
-          ></div>
-        </div>
-      </div>
+          <div className="barcode-scanner">
+            <video id="video" className="video" width="100%"></video>
+            <div className="scanarea">
+              <div
+                id="scanlight"
+                className="scanlight"
+                style={{ display: "none" }}
+              ></div>
+            </div>
+          </div>
+        </>
+      )}
       <Box display="flex" flexDirection="column" justifyContent="space-around">
         <TextField
           label="Full Name"
-          InputLabelProps={{
-            shrink: value ? true : false,
-          }}
+          style={{ height: "50px" }}
+          variant="outlined"
+          size="small"
           value={
             value
               ? value?.fullName !== undefined
-                ? value?.fullName
-                : value?.firstName
-              : value
+                ? value?.fullName || ""
+                : value?.firstName || ""
+              : ""
           }
         />
         <TextField
           label="Date Of Birth"
-          InputLabelProps={{
-            shrink: value ? true : false,
-          }}
-          value={value?.dateOfBirth}
+          style={{ height: "50px" }}
+          variant="outlined"
+          size="small"
+          value={value?.dateOfBirth || ""}
         />
         <TextField
           label="Address Street"
-          InputLabelProps={{
-            shrink: value ? true : false,
-          }}
-          value={value?.addressStreet}
+          style={{ height: "50px" }}
+          variant="outlined"
+          size="small"
+          value={value?.addressStreet || ""}
         />
         <TextField
           label="Address City"
-          InputLabelProps={{
-            shrink: value ? true : false,
-          }}
-          value={value?.addressCity}
+          style={{ height: "50px" }}
+          variant="outlined"
+          size="small"
+          value={value?.addressCity || ""}
         />
         <TextField
           label="Date Of Expiry"
-          InputLabelProps={{
-            shrink: value ? true : false,
-          }}
-          value={value?.dateOfExpiry}
+          style={{ height: "50px" }}
+          variant="outlined"
+          size="small"
+          value={value?.dateOfExpiry || ""}
         />
       </Box>
     </Box>
