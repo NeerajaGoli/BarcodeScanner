@@ -8,6 +8,7 @@ exports.CodeToKey = {
     DAD: 'middleName',
     DBD: 'dateOfIssue',
     DBB: 'dateOfBirth',
+    DCT: 'firstName',
     DBC: 'sex',
     DAY: 'eyeColor',
     DAU: 'height',

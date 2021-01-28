@@ -11,10 +11,11 @@ import {
   Typography,
   DialogActions,
 } from "@material-ui/core";
-
 import { NotFoundException, BrowserPDF417Reader } from "@zxing/library/esm";
 import "../index.css";
 import { parse } from "./parser";
+import * as ScanditSDK from "scandit-sdk";
+import { BarcodePicker, Barcode, ScanSettings } from "scandit-sdk";
 
 const ScanApp = () => {
   const [value, setValue] = React.useState<any>();
@@ -22,16 +23,17 @@ const ScanApp = () => {
   const codeReader: any = new BrowserPDF417Reader();
   const [show, setShow] = React.useState(false);
   const [open, setOpen] = React.useState(false);
+  const [bcodePicker, setPicker] = React.useState();
   const ele = document.getElementById("scanlight");
-  let res=false
+  let res = false;
   const handleScan = async () => {
     setShow(true);
-    
+
     if (ele !== null) {
       ele.style.display = "block";
     }
     try {
-      const controls=await codeReader.decodeFromVideoDevice(
+      await codeReader.decodeFromVideoDevice(
         selectedDeviceId,
         "video",
         (result: any, err: any) => {
@@ -40,42 +42,30 @@ const ScanApp = () => {
 
             const data = parse(result.text);
             setValue(data);
-            // console.log(data, codeReader);
 
-            // console.log(JSON.stringify(data, null, 2));
             codeReader.reset();
             if (ele !== null) {
               ele.style.display = "none";
             }
-            // setOpen(false);
-            // setValue(" ");
-            res=true;
+
+            res = true;
           }
           if (err) {
             console.log("error");
             setTimeout(() => {
-              // alert("couldn't detect, try again");\
-              // console.log("vaalue", result, value);
               if (!res) {
                 setOpen(true);
                 codeReader.reset();
                 if (ele !== null) {
                   ele.style.display = "none";
                 }
-                // setValue("error");
               }
             }, 10000);
           }
-          // if (err instanceof NotFoundException) {
-          //   console.log("excep");
-
-          // }
         }
       );
-      // console.log("con",controls)
-      // setTimeout(() => controls.stop(), 2000);
     } catch (err) {
-      // console.log("err");
+      console.log("error");
     }
   };
 
@@ -87,20 +77,74 @@ const ScanApp = () => {
     }
     setValue("");
     setOpen(false);
+    if (bcodePicker) {
+      bcodePicker.destroy();
+    }
   };
 
+  const handle = async () => {
+    await ScanditSDK.configure(
+      "LICENSE_KEY",
+      {
+        engineLocation: "https://cdn.jsdelivr.net/npm/scandit-sdk@5.x/build/",
+      }
+    )
+      .then(() => {
+        const ele = document.getElementById("scandit-barcode-picker");
 
+        if (ele !== null) {
+          BarcodePicker.create(ele, {
+            playSoundOnScan: true,
+            vibrateOnScan: true,
+          })
+            .then((barcodePicker: any) => {
+              const scanSettings = new ScanSettings({
+                enabledSymbologies: [
+                  Barcode.Symbology.PDF417,
+                  Barcode.Symbology.MICRO_PDF417,
+                ],
+                codeDuplicateFilter: 1000,
+              });
+
+              barcodePicker.applyScanSettings(scanSettings);
+              setPicker(barcodePicker);
+              barcodePicker.on("scan", (scanResult: any) => {
+                const d = scanResult.barcodes.reduce(
+                  (string: any, barcode: any) => {
+                    return (
+                      string +
+                      `${Barcode.Symbology.toHumanizedName(
+                        barcode.symbology
+                      )}: ${barcode.data}\n`
+                    );
+                  },
+                  ""
+                );
+                alert(d);
+                const data = parse(d);
+                setValue(data);
+              });
+            })
+            .catch((e) => {
+              console.log("err", e);
+            });
+        }
+      })
+      .catch((e: any) => {
+        alert("err");
+      });
+  };
   return (
     <Box display="flex" flexDirection="column">
       <Box display="flex" justifyContent="space-around">
-        <Button
-          style={{ width: "100px" }}
+        {/* <Button
+          style={{ width: "200px" }}
           color="primary"
           variant="contained"
           onClick={handleScan}
         >
-          scan
-        </Button>
+          Zxing Scan
+        </Button> */}
 
         <Button
           style={{ width: "100px" }}
@@ -109,6 +153,14 @@ const ScanApp = () => {
           onClick={handleReset}
         >
           Reset
+        </Button>
+        <Button
+          style={{ width: "200px" }}
+          color="primary"
+          variant="contained"
+          onClick={handle}
+        >
+          Scandit Scan
         </Button>
       </Box>
       <Dialog open={open}>
@@ -139,6 +191,8 @@ const ScanApp = () => {
           </div>
         </>
       )}
+      <div id="scandit-barcode-picker"></div>
+
       <Box display="flex" flexDirection="column" justifyContent="space-around">
         <TextField
           label="Full Name"
